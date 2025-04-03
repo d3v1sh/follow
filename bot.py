@@ -21,10 +21,16 @@ PERSONAL_GITHUB_TOKEN = os.getenv('PERSONAL_GITHUB_TOKEN')
 if not GITHUB_USER or not PERSONAL_GITHUB_TOKEN:
     raise EnvironmentError("Please set both 'GITHUB_USER' and 'PERSONAL_GITHUB_TOKEN' in your environment variables.")
 
+# Debug output
+print(f"Using GitHub username: {GITHUB_USER}")
+
 # GitHub API endpoints
 PER_PAGE = 100  # Maximum number of followers per page
 FOLLOWERS_URL_TEMPLATE = f'https://api.github.com/users/{GITHUB_USER}/followers?per_page={PER_PAGE}&page={{}}'
 FOLLOW_USER_URL_TEMPLATE = 'https://api.github.com/user/following/{}'
+
+# Debug output
+print(f"Followers URL template: {FOLLOWERS_URL_TEMPLATE}")
 
 # File paths
 FOLLOWED_USERS_FILE = 'followers.txt'
@@ -194,7 +200,51 @@ def main():
     logger.info('Hi! I am GitHub Follower Bot.')
     logger.info('Letting you follow all your followers!')
     logger.info('Starting to fetch your follower lists...\n')
-
+    
+    # Check follower count first
+    user_url = f'https://api.github.com/users/{GITHUB_USER}'
+    logger.info(f"Checking user profile at: {user_url}")
+    try:
+        user_response = requests.get(user_url, headers={
+            'User-Agent': 'GitHubFollowerBot/1.0',
+            'Authorization': f'token {PERSONAL_GITHUB_TOKEN}'
+        })
+        user_response.raise_for_status()
+        user_data = user_response.json()
+        follower_count = user_data.get('followers', 0)
+        following_count = user_data.get('following', 0)
+        logger.info(f"GitHub reports that {GITHUB_USER} has {follower_count} followers and is following {following_count} users.")
+        
+        if follower_count == 0:
+            logger.warning("You have 0 followers according to GitHub API. The bot can't follow anyone if you don't have followers.")
+            
+            # Check if there's a mismatch in follower data
+            followed_count = len(load_followed_users(FOLLOWED_USERS_FILE))
+            if followed_count > 0:
+                logger.warning(f"DETECTED DATA MISMATCH: Your followers.txt file contains {followed_count} users, but your current GitHub account has 0 followers.")
+                logger.warning("This might indicate you've changed GitHub usernames or there's another issue with your account.")
+                logger.warning("RECOMMENDATION: If you've changed GitHub usernames, you should reset your followers tracking:")
+                logger.warning("1. Delete or rename 'followers.txt' and 'follower_counter.txt' files")
+                logger.warning("2. Run the bot again to start fresh with your current GitHub account")
+                logger.warning("3. Make sure your GitHub account actually has followers to be followed")
+                
+                # Ask if user wants to reset followers tracking
+                reset = input("Would you like to reset followers tracking now? (yes/no): ").strip().lower()
+                if reset in ['yes', 'y']:
+                    try:
+                        if os.path.exists(FOLLOWED_USERS_FILE):
+                            os.rename(FOLLOWED_USERS_FILE, f"{FOLLOWED_USERS_FILE}.backup")
+                            logger.info(f"Renamed {FOLLOWED_USERS_FILE} to {FOLLOWED_USERS_FILE}.backup")
+                        if os.path.exists(FOLLOWER_COUNTER_FILE):
+                            os.rename(FOLLOWER_COUNTER_FILE, f"{FOLLOWER_COUNTER_FILE}.backup")
+                            logger.info(f"Renamed {FOLLOWER_COUNTER_FILE} to {FOLLOWER_COUNTER_FILE}.backup")
+                        logger.info("Followers tracking has been reset. Please run the bot again.")
+                        return
+                    except Exception as e:
+                        logger.error(f"Failed to reset followers tracking: {e}")
+    except Exception as e:
+        logger.error(f"Error checking user profile: {e}")
+    
     # Load already followed users
     followed_users = load_followed_users(FOLLOWED_USERS_FILE)
     logger.info(f"Loaded {len(followed_users)} already followed users.")
