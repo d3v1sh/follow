@@ -13,6 +13,7 @@ permissions:
 jobs:
   follow-bot:
     runs-on: ubuntu-latest
+    timeout-minutes: 2  # Stop the job after 3 hours
 
     env:
       GITHUB_USER: officialcodevoyage
@@ -62,10 +63,10 @@ jobs:
         run: pipenv run python bot.py
 
       - name: Commit and Push Changes
-        if: github.ref == 'refs/heads/main'  # Ensures it runs only on the main branch
+        if: always() && github.ref == 'refs/heads/main'
         run: |
-          git config user.name "OfficialCodeVoyage"
-          git config user.email "bondarenkopavloua@yahoo.com"
+          git config user.name "d3v1sh"
+          git config user.email "devansh21y@gmail.com"
           git add -A
           timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           git commit -m "Automated Commit: ${timestamp} (UTC)" || echo "No changes to commit."
