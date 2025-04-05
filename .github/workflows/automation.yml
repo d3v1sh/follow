@@ -13,7 +13,7 @@ permissions:
 jobs:
   follow-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 2  # Stop the job after 3 hours
+    timeout-minutes: 200  # Stop the job after 3 hours
 
     env:
       GITHUB_USER: officialcodevoyage
